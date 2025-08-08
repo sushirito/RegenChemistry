@@ -1,0 +1,22 @@
+{
+  "training_time": {
+    "adam_seconds": 3.105318069458008,
+    "lbfgs_seconds": 0.12593984603881836,
+    "total_seconds": 3.231257915496826
+  },
+  "metrics": {
+    "train": {
+      "mse": 0.026359081268310547,
+      "mae": 0.12922105193138123,
+      "r2_score": -0.6566299200057983
+    },
+    "test": {
+      "mse": 0.027244478464126587,
+      "mae": 0.13098183274269104,
+      "r2_score": -0.515886664390564
+    }
+  },
+  "physics_validation": {
+    "negative_predictions_train": 0,
+    "negative_predictions_test": 0,
+    "physics_compliant": 

@@ -1,0 +1,17 @@
+{
+  "strategy": "leave-one-scan-out",
+  "folds": 5,
+  "fold_results": [
+    {
+      "excluded_concentration": 10.0,
+      "training_concentrations": [
+        20.0,
+        30.0,
+        40.0,
+        60.0
+      ],
+      "mse": 0.001875474004860849,
+      "mae": 0.010795672154037251,
+      "r2_score": 0.9531455929309915,
+      "prediction_points": 601,
+      "physics_compliance": 

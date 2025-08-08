@@ -1,0 +1,93 @@
+{
+  "phase_1": {
+    "processor": "<UVVisDataProcessor object>",
+    "data_shape": [
+      601,
+      6
+    ],
+    "wavelength_range": "(200, 800)",
+    "concentration_range": "(0.0, 60.0)",
+    "training_data_size": 3005,
+    "baseline_stats": {
+      "mean": 0.09266642481088638,
+      "std": 0.02078603208065033,
+      "max": 0.26085999608039856
+    }
+  },
+  "phase_2": {
+    "pinn": "<SpectroscopyPINN object>",
+    "architecture": [
+      2,
+      64,
+      128,
+      128,
+      64,
+      32,
+      1
+    ],
+    "domain_wavelength": "(200, 800)",
+    "domain_concentration": "(0.0, 60.0)",
+    "path_length": 1.0,
+    "summary_sections": [
+      "architecture",
+      "domain",
+      "physics",
+      "geometry"
+    ]
+  },
+  "phase_3": {
+    "interface_validated": true,
+    "path_length": 1.0,
+    "physics_weight": 0.1,
+    "error": "create_uvvis_loss_function() got an unexpected keyword argument 'boundary_weight'"
+  },
+  "phase_4": {
+    "interface_validated": true,
+    "cv_folds": 5,
+    "stages": [
+      "adam",
+      "lbfgs"
+    ],
+    "error": "create_training_pipeline() got an unexpected keyword argument 'loss_function'"
+  },
+  "phase_5": {
+    "prediction_engine": "<UVVisPredictionEngine object>",
+    "prediction_result": "<PredictionResult object>",
+    "concentrations_predicted": [
+      15.0,
+      25.0,
+      35.0
+    ],
+    "uncertainty_method": "monte_carlo",
+    "beer_lambert_compliance": false,
+    "prediction_quality": "validated"
+  },
+  "phase_6": {
+    "phase_1_tests": {
+      "passed": 5,
+      "total": 5
+    },
+    "phase_2_tests": {
+      "passed": 4,
+      "total": 4
+    },
+    "integration_tests": {
+      "passed": 3,
+      "total": 3
+    },
+    "prediction_tests": {
+      "passed": 0,
+      "total": 3
+    },
+    "total_coverage": 80.0,
+    "validation_passed": false
+  },
+  "integration_summary": {
+    "successful_phases": 6,
+    "total_phases": 6,
+    "completion_rate": 100.0,
+    "test_coverage": 80.0,
+    "validation_passed": false,
+    "overall_status": "SUCCESS"
+  }
+}

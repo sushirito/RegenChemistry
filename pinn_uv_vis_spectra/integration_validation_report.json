@@ -1,0 +1,70 @@
+{
+  "phase_1_data_preprocessing": {
+    "status": "passed",
+    "tests": {
+      "data_loading": "passed",
+      "spectral_extraction": "passed",
+      "beer_lambert_computation": "passed",
+      "normalization": "passed",
+      "training_data_creation": "passed"
+    },
+    "data_dimensions": {
+      "wavelengths": 601,
+      "concentrations": 6,
+      "wavelength_range": [
+        200.0,
+        800.0
+      ],
+      "concentration_range": [
+        0.0,
+        60.0
+      ]
+    },
+    "training_data_shape": {
+      "n_samples": 3005,
+      "n_input_features": 2,
+      "n_output_features": 1
+    }
+  },
+  "phase_2_model_definition": {
+    "status": "failed",
+    "tests": {
+      "pinn_initialization": "passed",
+      "geometry_creation": "passed"
+    },
+    "error": "'FNN' object has no attribute 'apply_input_transform'"
+  },
+  "phase_3_loss_functions": {
+    "status": "passed",
+    "tests": {
+      "module_import": "passed",
+      "loss_function_init": "passed",
+      "factory_function": "passed",
+      "adaptive_weighting": "passed"
+    }
+  },
+  "phase_4_training": {
+    "status": "skipped",
+    "tests": {
+      "module_import": "skipped"
+    }
+  },
+  "integration_tests": {
+    "status": "passed",
+    "tests": {
+      "normalization_consistency": "passed",
+      "api_consistency": "passed",
+      "error_handling": "passed"
+    }
+  },
+  "overall_status": "failed",
+  "summary": {
+    "total_phases": 5,
+    "passed": 3,
+    "failed": 1,
+    "skipped": 1,
+    "critical_failures": [
+      "phase_2_model_definition"
+    ]
+  }
+}
