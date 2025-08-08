@@ -42,6 +42,24 @@ except ImportError as e:
 from data_preprocessing import load_uvvis_data
 
 
+def make_json_serializable(obj):
+    """Convert numpy types to JSON-serializable Python types."""
+    if isinstance(obj, dict):
+        return {k: make_json_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [make_json_serializable(item) for item in obj]
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.float32, np.float64, np.floating)):
+        return float(obj)
+    elif isinstance(obj, (np.int32, np.int64, np.integer)):
+        return int(obj)
+    elif isinstance(obj, (np.bool_, bool)):
+        return bool(obj)
+    else:
+        return obj
+
+
 def train_real_deepxde_pinn():
     """Train a real PINN using DeepXDE DataSet API."""
     
@@ -170,7 +188,7 @@ def train_real_deepxde_pinn():
         'physics_validation': {
             'negative_predictions_train': int(negative_train),
             'negative_predictions_test': int(negative_test),
-            'physics_compliant': negative_train == 0 and negative_test == 0
+            'physics_compliant': bool(negative_train == 0 and negative_test == 0)
         },
         'model_info': {
             'architecture': layer_sizes,
@@ -203,9 +221,12 @@ def train_real_deepxde_pinn():
     # Test predictions on new data
     test_pinn_predictions(model, processor)
     
-    # Save results
+    # Compare PINN vs actual spectra reconstruction
+    compare_spectra_reconstruction(model, processor)
+    
+    # Save results (with JSON serialization fix)
     with open("deepxde_training_results.json", 'w') as f:
-        json.dump(results, f, indent=2)
+        json.dump(make_json_serializable(results), f, indent=2)
     logger.info("✓ Results saved to: deepxde_training_results.json")
     
     return model, results
@@ -467,6 +488,156 @@ def test_physics_compliance(model, processor):
     logger.info("✓ Physics compliance plots saved to: deepxde_physics_compliance.png")
 
 
+def compare_spectra_reconstruction(model, processor):
+    """Compare PINN predictions vs actual UV-Vis spectra for spectral reconstruction evaluation."""
+    
+    logger.info("🔸 Comparing PINN vs actual UV-Vis spectral reconstruction...")
+    
+    # Select representative concentrations from original data
+    unique_concs = np.unique(processor.concentrations_nonzero)
+    
+    # Choose 6 concentrations spanning the range for detailed comparison
+    if len(unique_concs) >= 6:
+        conc_indices = np.linspace(0, len(unique_concs)-1, 6).astype(int)
+        selected_concs = unique_concs[conc_indices]
+    else:
+        selected_concs = unique_concs
+    
+    fig, axes = plt.subplots(2, 3, figsize=(20, 12))
+    axes = axes.flatten()
+    
+    reconstruction_metrics = []
+    
+    for i, target_conc in enumerate(selected_concs[:6]):
+        if i >= 6:
+            break
+            
+        # Find actual data points for this concentration (within tolerance)
+        conc_tolerance = 0.5  # µg/L
+        conc_idx = np.argmin(np.abs(processor.concentrations_nonzero - target_conc))
+        
+        if np.abs(processor.concentrations_nonzero[conc_idx] - target_conc) > conc_tolerance:
+            continue
+            
+        # Get actual spectrum from differential absorption + baseline
+        # This reconstructs the original absorbance: A(λ,c) = ΔA(λ,c) + A_baseline(λ)
+        actual_spectrum = processor.differential_absorption[:, conc_idx] + processor.baseline_absorption
+        
+        # Create PINN prediction for this concentration across all wavelengths
+        conc_norm = target_conc / processor.concentrations_nonzero.max()
+        wavelengths_norm = (processor.wavelengths - processor.wavelength_norm_params['center']) / processor.wavelength_norm_params['scale']
+        
+        X_pred = np.column_stack([
+            wavelengths_norm,
+            np.full(len(wavelengths_norm), conc_norm)
+        ])
+        
+        try:
+            # Predict differential absorption with PINN
+            pinn_diff_absorption = model.predict(X_pred).flatten()
+            
+            # Denormalize the prediction
+            pinn_diff_absorption_denorm = processor.denormalize_absorption(pinn_diff_absorption)
+            
+            # Reconstruct full spectrum: A(λ,c) = ΔA_predicted(λ,c) + A_baseline(λ)
+            pinn_spectrum = pinn_diff_absorption_denorm + processor.baseline_absorption
+            
+            # Calculate reconstruction metrics
+            mse_recon = np.mean((actual_spectrum - pinn_spectrum) ** 2)
+            mae_recon = np.mean(np.abs(actual_spectrum - pinn_spectrum))
+            r2_recon = 1 - np.sum((actual_spectrum - pinn_spectrum) ** 2) / np.sum((actual_spectrum - np.mean(actual_spectrum)) ** 2)
+            
+            # Calculate spectral similarity metrics
+            correlation = np.corrcoef(actual_spectrum, pinn_spectrum)[0, 1]
+            
+            # Peak position comparison (find main peak around plasmon resonance)
+            plasmon_range = (processor.wavelengths >= 480) & (processor.wavelengths <= 580)
+            actual_peak_idx = np.argmax(actual_spectrum[plasmon_range])
+            pinn_peak_idx = np.argmax(pinn_spectrum[plasmon_range])
+            peak_shift = processor.wavelengths[plasmon_range][pinn_peak_idx] - processor.wavelengths[plasmon_range][actual_peak_idx]
+            
+            reconstruction_metrics.append({
+                'concentration': float(target_conc),
+                'mse': float(mse_recon),
+                'mae': float(mae_recon),
+                'r2': float(r2_recon),
+                'correlation': float(correlation),
+                'peak_shift_nm': float(peak_shift)
+            })
+            
+            # Plot comparison
+            axes[i].plot(processor.wavelengths, actual_spectrum, 'b-', linewidth=2.5, 
+                        label=f'Actual ({target_conc:.1f} µg/L)', alpha=0.8)
+            axes[i].plot(processor.wavelengths, pinn_spectrum, 'r--', linewidth=2, 
+                        label=f'PINN Prediction', alpha=0.8)
+            
+            # Highlight differences
+            diff = np.abs(actual_spectrum - pinn_spectrum)
+            axes[i].fill_between(processor.wavelengths, actual_spectrum - diff/2, 
+                               actual_spectrum + diff/2, alpha=0.2, color='orange',
+                               label='Prediction Error')
+            
+            # Add metrics text
+            metrics_text = f'R² = {r2_recon:.3f}\nMAE = {mae_recon:.4f}\nPeak Δ = {peak_shift:.1f}nm'
+            axes[i].text(0.02, 0.98, metrics_text, transform=axes[i].transAxes, 
+                        verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8),
+                        fontsize=9)
+            
+            axes[i].set_xlabel('Wavelength (nm)')
+            axes[i].set_ylabel('Extinction Coefficient')
+            axes[i].set_title(f'{target_conc:.1f} µg/L Reconstruction')
+            axes[i].legend(fontsize=9)
+            axes[i].grid(True, alpha=0.3)
+            
+            # Mark plasmon resonance region
+            axes[i].axvspan(480, 580, alpha=0.1, color='gold', label='Plasmon Region')
+            
+            logger.info(f"  {target_conc:.1f} µg/L: R²={r2_recon:.3f}, MAE={mae_recon:.4f}, Peak shift={peak_shift:.1f}nm")
+            
+        except Exception as e:
+            logger.warning(f"Reconstruction comparison failed for {target_conc:.1f} µg/L: {e}")
+            continue
+    
+    # Remove unused subplots
+    for j in range(len(selected_concs), 6):
+        fig.delaxes(axes[j])
+    
+    plt.suptitle('UV-Vis Spectral Reconstruction: PINN vs Actual Data\n' +
+                 'Direct comparison of predicted vs measured extinction spectra', fontsize=16)
+    plt.tight_layout()
+    plt.savefig('deepxde_spectral_reconstruction.png', dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # Summary metrics
+    if reconstruction_metrics:
+        avg_r2 = np.mean([m['r2'] for m in reconstruction_metrics])
+        avg_mae = np.mean([m['mae'] for m in reconstruction_metrics])
+        avg_correlation = np.mean([m['correlation'] for m in reconstruction_metrics])
+        avg_peak_shift = np.mean([np.abs(m['peak_shift_nm']) for m in reconstruction_metrics])
+        
+        logger.info(f"✓ Spectral reconstruction summary:")
+        logger.info(f"  - Average R²: {avg_r2:.4f}")
+        logger.info(f"  - Average MAE: {avg_mae:.4f}")  
+        logger.info(f"  - Average correlation: {avg_correlation:.4f}")
+        logger.info(f"  - Average peak shift: {avg_peak_shift:.1f} nm")
+        
+        # Save reconstruction metrics
+        with open('deepxde_reconstruction_metrics.json', 'w') as f:
+            json.dump({
+                'individual_metrics': reconstruction_metrics,
+                'summary': {
+                    'average_r2': float(avg_r2),
+                    'average_mae': float(avg_mae),
+                    'average_correlation': float(avg_correlation),
+                    'average_peak_shift_nm': float(avg_peak_shift)
+                }
+            }, f, indent=2)
+        
+        logger.info("✓ Reconstruction metrics saved to: deepxde_reconstruction_metrics.json")
+    
+    logger.info("✓ Spectral reconstruction comparison saved to: deepxde_spectral_reconstruction.png")
+
+
 if __name__ == "__main__":
     logger.info("="*60)
     logger.info("🚀 FINAL DEEPXDE PINN TRAINING")
@@ -489,7 +660,9 @@ if __name__ == "__main__":
             logger.info("  - deepxde_comprehensive_analysis.png")
             logger.info("  - deepxde_pinn_final_predictions.png")
             logger.info("  - deepxde_physics_compliance.png")
+            logger.info("  - deepxde_spectral_reconstruction.png")
             logger.info("  - deepxde_training_results.json")
+            logger.info("  - deepxde_reconstruction_metrics.json")
             logger.info("  - final_deepxde_pinn_model/ (saved model)")
             logger.info("="*60)
         else:
