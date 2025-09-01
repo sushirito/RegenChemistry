@@ -7,8 +7,11 @@ Uses minimal data and iterations
 import torch
 import numpy as np
 import time
-from geodesic_model import GeodesicSpectralModel
-from data_loader import SpectralDataset
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.models.geodesic_model import GeodesicSpectralModel
+from src.data.data_loader import SpectralDataset
 
 # Set seeds
 torch.manual_seed(42)

@@ -14,7 +14,7 @@ from typing import Tuple, List
 class SpectralDataset(Dataset):
     """Dataset for spectral interpolation with concentration pairs"""
     
-    def __init__(self, csv_path: str = "0.30MB_AuNP_As.csv", 
+    def __init__(self, csv_path: str = "data/0.30MB_AuNP_As.csv", 
                  exclude_concentration_idx: int = None):
         """
         Load spectral data and create concentration transition pairs
@@ -144,7 +144,7 @@ def get_holdout_test_data(holdout_idx: int) -> Tuple[np.ndarray, np.ndarray, np.
     Returns:
         wavelengths, true_absorbance, concentration value
     """
-    df = pd.read_csv("0.30MB_AuNP_As.csv")
+    df = pd.read_csv("data/0.30MB_AuNP_As.csv")
     wavelengths = df['Wavelength'].values
     concentration_columns = [col for col in df.columns[1:]]
     concentrations = np.array([float(col) for col in concentration_columns])

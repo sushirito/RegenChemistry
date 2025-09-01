@@ -9,8 +9,8 @@ import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.optimize import minimize_scalar, minimize
 from typing import Tuple, Optional, Dict
-from metric_network import MetricNetwork
-from geodesic_ode import GeodesicODE
+from src.models.metric_network import MetricNetwork
+from src.core.geodesic_ode import GeodesicODE
 
 
 class ShootingSolver:

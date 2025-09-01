@@ -6,7 +6,7 @@ Computes Γ(c,λ) = ½ g⁻¹(c,λ) ∂g(c,λ)/∂c for the geodesic equation
 
 import torch
 from typing import Optional, Dict, Tuple
-from metric_network import MetricNetwork
+from src.models.metric_network import MetricNetwork
 
 
 class ChristoffelComputer:

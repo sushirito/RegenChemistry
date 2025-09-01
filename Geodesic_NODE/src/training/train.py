@@ -14,8 +14,8 @@ import os
 from datetime import datetime
 from typing import Dict, Optional
 
-from data_loader import create_data_loaders, SpectralDataset
-from geodesic_model import GeodesicSpectralModel
+from src.data.data_loader import create_data_loaders, SpectralDataset
+from src.models.geodesic_model import GeodesicSpectralModel
 
 
 class Trainer:

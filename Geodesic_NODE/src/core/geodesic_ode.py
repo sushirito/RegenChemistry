@@ -7,8 +7,8 @@ Implements the true geodesic equation: d²c/dt² = -Γ(c,λ)(dc/dt)²
 import torch
 import numpy as np
 from typing import Callable, Tuple, Optional
-from metric_network import MetricNetwork
-from christoffel import ChristoffelComputer
+from src.models.metric_network import MetricNetwork
+from src.core.christoffel import ChristoffelComputer
 
 
 class GeodesicODE:

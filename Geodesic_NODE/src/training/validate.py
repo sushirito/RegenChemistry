@@ -13,9 +13,9 @@ from typing import Dict, Tuple, List
 import os
 from tqdm import tqdm
 
-from data_loader import get_holdout_test_data, SpectralDataset
-from geodesic_model import GeodesicSpectralModel
-from train import Trainer
+from src.data.data_loader import get_holdout_test_data, SpectralDataset
+from src.models.geodesic_model import GeodesicSpectralModel
+from src.training.train import Trainer
 
 
 class Validator:

@@ -13,9 +13,9 @@ import os
 from datetime import datetime
 import time
 
-from data_loader import create_data_loaders, SpectralDataset
-from geodesic_model import GeodesicSpectralModel
-from train import Trainer
+from src.data.data_loader import create_data_loaders, SpectralDataset
+from src.models.geodesic_model import GeodesicSpectralModel
+from src.training.train import Trainer
 
 
 def create_fast_model():

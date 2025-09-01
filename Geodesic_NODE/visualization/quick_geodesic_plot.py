@@ -8,9 +8,12 @@ import numpy as np
 import plotly.graph_objects as go
 from scipy.interpolate import interp1d
 import torch
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from geodesic_model import GeodesicSpectralModel
-from data_loader import SpectralDataset
+from src.models.geodesic_model import GeodesicSpectralModel
+from src.data.data_loader import SpectralDataset
 
 
 def main():
@@ -19,7 +22,7 @@ def main():
     print("="*60)
     
     # Load data
-    df = pd.read_csv('0.30MB_AuNP_As.csv')
+    df = pd.read_csv('data/0.30MB_AuNP_As.csv')
     wavelengths = df['Wavelength'].values
     concentrations = [float(col) for col in df.columns[1:]]
     absorbance_matrix = df.iloc[:, 1:].values

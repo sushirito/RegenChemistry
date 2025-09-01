@@ -8,11 +8,11 @@ import torch
 import torch.nn as nn
 import numpy as np
 from typing import Dict, Optional, Tuple
-from metric_network import MetricNetwork, compute_metric_smoothness_loss, compute_metric_bounds_loss
-from christoffel import ChristoffelComputer
-from geodesic_ode import GeodesicODE
-from shooting_solver import ShootingSolver
-from decoder_network import AbsorbanceDecoder
+from src.models.metric_network import MetricNetwork, compute_metric_smoothness_loss, compute_metric_bounds_loss
+from src.core.christoffel import ChristoffelComputer
+from src.core.geodesic_ode import GeodesicODE
+from src.core.shooting_solver import ShootingSolver
+from src.models.decoder_network import AbsorbanceDecoder
 
 
 class GeodesicSpectralModel(nn.Module):

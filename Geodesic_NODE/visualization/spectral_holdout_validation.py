@@ -180,7 +180,7 @@ def main():
     """Main function to create and save the visualization"""
     
     # Load data
-    filepath = '/Users/aditya/CodingProjects/STS_September/0.30MB_AuNP_As.csv'
+    filepath = 'data/0.30MB_AuNP_As.csv'
     print("Loading spectral data...")
     wavelengths, concentrations, absorbance_matrix = load_spectral_data(filepath)
     

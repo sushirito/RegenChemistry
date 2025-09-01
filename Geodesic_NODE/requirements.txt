@@ -1,0 +1,9 @@
+torch>=2.0.0
+numpy
+pandas
+scipy
+scikit-learn
+plotly
+tqdm
+matplotlib
+flask

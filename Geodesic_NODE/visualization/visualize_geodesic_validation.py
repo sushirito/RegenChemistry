@@ -12,8 +12,12 @@ from scipy.interpolate import interp1d
 import torch
 import time
 
-from geodesic_model import GeodesicSpectralModel
-from data_loader import SpectralDataset
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.models.geodesic_model import GeodesicSpectralModel
+from src.data.data_loader import SpectralDataset
 
 
 def load_spectral_data(filepath):
@@ -240,7 +244,7 @@ def main():
     print("="*60)
     
     # Load data
-    filepath = '0.30MB_AuNP_As.csv'
+    filepath = 'data/0.30MB_AuNP_As.csv'
     print(f"\nLoading data from {filepath}...")
     wavelengths, concentrations, absorbance_matrix = load_spectral_data(filepath)
     print(f"Data shape: {len(wavelengths)} wavelengths × {len(concentrations)} concentrations")
