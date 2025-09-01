@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geodesic Spectral Model - Graphical Abstract</title>
+    
+    <!-- External Libraries -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.15/paper-full.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Computer Modern', 'Latin Modern', 'Times New Roman', serif;
+            background: linear-gradient(135deg, #FAFAFA 0%, #F5F5F5 100%);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #main-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #graphical-abstract {
+            width: 1920px;
+            height: 1080px;
+            max-width: 95vw;
+            max-height: 95vh;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #gradient-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.3;
+        }
+        
+        #main-diagram {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Mathematical equation overlays */
+        .equation-overlay {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+            color: #2C3E50;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .equation-overlay.visible {
+            opacity: 1;
+        }
+        
+        /* Manifold styling */
+        .manifold-surface {
+            fill: url(#manifoldGradient);
+            stroke: none;
+            opacity: 0.8;
+        }
+        
+        .manifold-grid {
+            stroke: #E0E0E0;
+            stroke-width: 0.5;
+            opacity: 0.3;
+        }
+        
+        /* Geodesic paths */
+        .geodesic-path {
+            fill: none;
+            stroke: #FFD700;
+            stroke-width: 2.5;
+            opacity: 0.9;
+            stroke-linecap: round;
+        }
+        
+        .geodesic-path.trial {
+            stroke: #FFD700;
+            stroke-width: 1;
+            opacity: 0.2;
+            stroke-dasharray: 5, 3;
+        }
+        
+        .velocity-arrow {
+            fill: #4A90E2;
+            opacity: 0.7;
+        }
+        
+        /* Neural network elements */
+        .neural-node {
+            fill: url(#neuralGradient);
+            stroke: #fff;
+            stroke-width: 2;
+        }
+        
+        .neural-connection {
+            stroke: #00D4FF;
+            stroke-width: 1;
+            opacity: 0.3;
+            fill: none;
+        }
+        
+        .neural-connection.active {
+            opacity: 0.8;
+            stroke-width: 2;
+        }
+        
+        /* Flow arrows */
+        .flow-arrow {
+            stroke: #8B4789;
+            stroke-width: 2;
+            fill: none;
+            opacity: 0.6;
+            marker-end: url(#arrowhead);
+        }
+        
+        /* Labels and text */
+        .section-label {
+            font-size: 18px;
+            font-weight: 500;
+            fill: #2C3E50;
+            text-anchor: middle;
+        }
+        
+        .math-label {
+            font-size: 14px;
+            fill: #8B4789;
+            font-style: italic;
+        }
+        
+        .axis-label {
+            font-size: 12px;
+            fill: #666;
+        }
+        
+        /* Animation classes */
+        @keyframes flowAnimation {
+            0% { offset-distance: 0%; }
+            100% { offset-distance: 100%; }
+        }
+        
+        .flowing-particle {
+            r: 3;
+            fill: #FFD700;
+            filter: blur(1px);
+            animation: flowAnimation 3s linear infinite;
+        }
+        
+        /* Title and subtitle */
+        #title-group {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+        }
+        
+        #main-title {
+            font-size: 28px;
+            font-weight: 300;
+            color: #2C3E50;
+            letter-spacing: 1px;
+        }
+        
+        #subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        /* Export button */
+        #export-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #8B4789;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 100;
+            transition: background 0.3s ease;
+        }
+        
+        #export-btn:hover {
+            background: #6B3769;
+        }
+        
+        /* Hover tooltip */
+        .tooltip {
+            position: absolute;
+            background: rgba(44, 62, 80, 0.95);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+        }
+        
+        .tooltip.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="main-container">
+        <div id="graphical-abstract">
+            <!-- Background gradient canvas -->
+            <canvas id="gradient-background"></canvas>
+            
+            <!-- Main SVG diagram -->
+            <svg id="main-diagram">
+                <!-- Define gradients and patterns -->
+                <defs>
+                    <!-- Manifold gradient -->
+                    <linearGradient id="manifoldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#FFE5EC;stop-opacity:1" />
+                        <stop offset="50%" style="stop-color:#F0F4FF;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#E5F2FF;stop-opacity:1" />
+                    </linearGradient>
+                    
+                    <!-- Neural network gradient -->
+                    <linearGradient id="neuralGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#00D4FF;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#FF00FF;stop-opacity:1" />
+                    </linearGradient>
+                    
+                    <!-- Arrow marker -->
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                            refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#8B4789" />
+                    </marker>
+                    
+                    <!-- Drop shadow filter -->
+                    <filter id="dropshadow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+                        <feOffset dx="2" dy="2" result="offsetblur"/>
+                        <feComponentTransfer>
+                            <feFuncA type="linear" slope="0.2"/>
+                        </feComponentTransfer>
+                        <feMerge>
+                            <feMergeNode/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+                
+                <!-- Main content groups -->
+                <g id="manifold-group" transform="translate(320, 540)"></g>
+                <g id="geodesic-group" transform="translate(960, 540)"></g>
+                <g id="neural-group" transform="translate(1440, 540)"></g>
+                <g id="flow-arrows-group"></g>
+                <g id="equations-group"></g>
+            </svg>
+            
+            <!-- Title and subtitle -->
+            <div id="title-group">
+                <div id="main-title">Geodesic Spectral Interpolation on Learned Riemannian Manifolds</div>
+                <div id="subtitle">Physics-Informed Neural Networks for UV-Vis Spectroscopy</div>
+            </div>
+            
+            <!-- Equation overlays (populated dynamically) -->
+            <div id="equation-overlays"></div>
+            
+            <!-- Export button -->
+            <button id="export-btn" onclick="exportDiagram()">Export as SVG</button>
+            
+            <!-- Tooltip -->
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+    </div>
+    
+    <script>
+        // MathJax configuration
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$']],
+                displayMath: [['$$', '$$']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+        
+        // Initialize Paper.js
+        paper.setup('gradient-background');
+        
+        // Global variables
+        let svg, manifoldGroup, geodesicGroup, neuralGroup;
+        let width = 1920, height = 1080;
+        let equations = {};
+        
+        // Initialize visualization
+        function init() {
+            svg = d3.select('#main-diagram');
+            manifoldGroup = svg.select('#manifold-group');
+            geodesicGroup = svg.select('#geodesic-group');
+            neuralGroup = svg.select('#neural-group');
+            
+            // Draw background gradient
+            drawBackgroundGradient();
+            
+            // Create main components
+            drawManifold();
+            drawGeodesics();
+            drawNeuralNetwork();
+            drawFlowArrows();
+            
+            // Add mathematical equations
+            addEquations();
+            
+            // Setup interactions
+            setupInteractions();
+            
+            // Start animations
+            startAnimations();
+        }
+        
+        // Draw soft background gradient
+        function drawBackgroundGradient() {
+            const canvas = document.getElementById('gradient-background');
+            const ctx = canvas.getContext('2d');
+            canvas.width = width;
+            canvas.height = height;
+            
+            // Create radial gradient
+            const gradient = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, width/2);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+            gradient.addColorStop(0.5, 'rgba(245, 248, 255, 0.7)');
+            gradient.addColorStop(1, 'rgba(230, 235, 245, 0.5)');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+        }
+        
+        // Draw the manifold surface
+        function drawManifold() {
+            const gridSize = 20;
+            const manifoldWidth = 280;
+            const manifoldHeight = 200;
+            
+            // Create manifold surface path
+            const surfaceData = [];
+            for (let i = 0; i <= gridSize; i++) {
+                for (let j = 0; j <= gridSize; j++) {
+                    const x = (i / gridSize - 0.5) * manifoldWidth;
+                    const y = (j / gridSize - 0.5) * manifoldHeight;
+                    const z = Math.sin(i / 3) * Math.cos(j / 3) * 20;
+                    surfaceData.push({x: x, y: y - z, i: i, j: j});
+                }
+            }
+            
+            // Draw grid lines
+            const gridLines = manifoldGroup.append('g').attr('class', 'manifold-grid');
+            
+            // Horizontal lines
+            for (let i = 0; i <= gridSize; i++) {
+                const lineData = surfaceData.filter(d => d.i === i);
+                gridLines.append('path')
+                    .datum(lineData)
+                    .attr('d', d3.line()
+                        .x(d => d.x)
+                        .y(d => d.y)
+                        .curve(d3.curveBasis))
+                    .attr('class', 'manifold-grid');
+            }
+            
+            // Vertical lines
+            for (let j = 0; j <= gridSize; j++) {
+                const lineData = surfaceData.filter(d => d.j === j);
+                gridLines.append('path')
+                    .datum(lineData)
+                    .attr('d', d3.line()
+                        .x(d => d.x)
+                        .y(d => d.y)
+                        .curve(d3.curveBasis))
+                    .attr('class', 'manifold-grid');
+            }
+            
+            // Add manifold surface
+            manifoldGroup.append('ellipse')
+                .attr('cx', 0)
+                .attr('cy', 0)
+                .attr('rx', manifoldWidth/2)
+                .attr('ry', manifoldHeight/2)
+                .attr('class', 'manifold-surface')
+                .attr('filter', 'url(#dropshadow)');
+            
+            // Add tangent plane
+            const tangentPlane = manifoldGroup.append('g')
+                .attr('transform', 'translate(-50, -120)');
+            
+            tangentPlane.append('rect')
+                .attr('x', -60)
+                .attr('y', -30)
+                .attr('width', 120)
+                .attr('height', 60)
+                .attr('fill', 'rgba(200, 200, 255, 0.3)')
+                .attr('stroke', '#4A90E2')
+                .attr('stroke-width', 1);
+            
+            // Labels
+            manifoldGroup.append('text')
+                .attr('x', 0)
+                .attr('y', -150)
+                .attr('class', 'section-label')
+                .text('Riemannian Manifold');
+            
+            manifoldGroup.append('text')
+                .attr('x', -100)
+                .attr('y', -115)
+                .attr('class', 'math-label')
+                .text('TₚM');
+            
+            manifoldGroup.append('text')
+                .attr('x', 0)
+                .attr('y', 130)
+                .attr('class', 'math-label')
+                .text('M(c, λ)');
+            
+            // Axis labels
+            manifoldGroup.append('text')
+                .attr('x', -150)
+                .attr('y', 0)
+                .attr('class', 'axis-label')
+                .text('c (ppb)');
+            
+            manifoldGroup.append('text')
+                .attr('x', 0)
+                .attr('y', 120)
+                .attr('class', 'axis-label')
+                .text('λ (nm)');
+        }
+        
+        // Draw geodesic paths
+        function drawGeodesics() {
+            // Draw multiple trial paths (shooting iterations)
+            const trialPaths = [
+                {control: [[-150, 20], [-50, -40], [50, -20], [150, 30]], opacity: 0.15},
+                {control: [[-150, 20], [-50, -20], [50, 10], [150, 30]], opacity: 0.2},
+                {control: [[-150, 20], [-50, 0], [50, 5], [150, 30]], opacity: 0.25}
+            ];
+            
+            trialPaths.forEach(pathData => {
+                geodesicGroup.append('path')
+                    .datum(pathData.control)
+                    .attr('d', d3.line()
+                        .x(d => d[0])
+                        .y(d => d[1])
+                        .curve(d3.curveCatmullRom.alpha(0.5)))
+                    .attr('class', 'geodesic-path trial')
+                    .style('opacity', pathData.opacity);
+            });
+            
+            // Draw optimal geodesic
+            const optimalPath = [[-150, 20], [-50, -10], [50, -5], [150, 30]];
+            const geodesicPath = geodesicGroup.append('path')
+                .datum(optimalPath)
+                .attr('d', d3.line()
+                    .x(d => d[0])
+                    .y(d => d[1])
+                    .curve(d3.curveCatmullRom.alpha(0.5)))
+                .attr('class', 'geodesic-path')
+                .attr('id', 'optimal-geodesic');
+            
+            // Add velocity vectors along the path
+            const velocityPositions = [
+                {x: -100, y: 5, angle: 20},
+                {x: 0, y: -7, angle: 5},
+                {x: 100, y: 12, angle: 25}
+            ];
+            
+            velocityPositions.forEach(pos => {
+                const arrow = geodesicGroup.append('g')
+                    .attr('transform', `translate(${pos.x}, ${pos.y})`);
+                
+                arrow.append('line')
+                    .attr('x1', 0)
+                    .attr('y1', 0)
+                    .attr('x2', 30)
+                    .attr('y2', 0)
+                    .attr('stroke', '#4A90E2')
+                    .attr('stroke-width', 2)
+                    .attr('transform', `rotate(${pos.angle})`);
+                
+                arrow.append('polygon')
+                    .attr('points', '30,0 25,-3 25,3')
+                    .attr('class', 'velocity-arrow')
+                    .attr('transform', `rotate(${pos.angle})`);
+            });
+            
+            // Add endpoints
+            geodesicGroup.append('circle')
+                .attr('cx', -150)
+                .attr('cy', 20)
+                .attr('r', 6)
+                .attr('fill', '#2ECC71')
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2);
+            
+            geodesicGroup.append('circle')
+                .attr('cx', 150)
+                .attr('cy', 30)
+                .attr('r', 6)
+                .attr('fill', '#E74C3C')
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2);
+            
+            // Labels
+            geodesicGroup.append('text')
+                .attr('x', 0)
+                .attr('y', -150)
+                .attr('class', 'section-label')
+                .text('Geodesic Evolution');
+            
+            geodesicGroup.append('text')
+                .attr('x', -170)
+                .attr('y', 25)
+                .attr('class', 'math-label')
+                .text('c₀');
+            
+            geodesicGroup.append('text')
+                .attr('x', 160)
+                .attr('y', 35)
+                .attr('class', 'math-label')
+                .text('c₁');
+            
+            geodesicGroup.append('text')
+                .attr('x', 0)
+                .attr('y', -30)
+                .attr('class', 'math-label')
+                .text('γ(t)');
+        }
+        
+        // Draw neural network architecture
+        function drawNeuralNetwork() {
+            // Metric network (top)
+            const metricNet = neuralGroup.append('g')
+                .attr('transform', 'translate(0, -80)');
+            
+            drawNeuralLayer(metricNet, -100, 0, 2, 'Input');
+            drawNeuralLayer(metricNet, -40, 0, 4, 'Hidden');
+            drawNeuralLayer(metricNet, 20, 0, 3, 'Hidden');
+            drawNeuralLayer(metricNet, 80, 0, 1, 'g(c,λ)');
+            
+            // Connect layers
+            connectLayers(metricNet, -100, -40, 2, 4);
+            connectLayers(metricNet, -40, 20, 4, 3);
+            connectLayers(metricNet, 20, 80, 3, 1);
+            
+            // Feature extraction (middle)
+            const features = neuralGroup.append('g')
+                .attr('transform', 'translate(0, 0)');
+            
+            features.append('rect')
+                .attr('x', -60)
+                .attr('y', -20)
+                .attr('width', 120)
+                .attr('height', 40)
+                .attr('fill', 'rgba(255, 215, 0, 0.1)')
+                .attr('stroke', '#FFD700')
+                .attr('stroke-width', 1.5)
+                .attr('rx', 5);
+            
+            features.append('text')
+                .attr('x', 0)
+                .attr('y', 5)
+                .attr('text-anchor', 'middle')
+                .attr('class', 'math-label')
+                .text('f = [c_f, c̄, L, v_max]');
+            
+            // Decoder network (bottom)
+            const decoderNet = neuralGroup.append('g')
+                .attr('transform', 'translate(0, 80)');
+            
+            drawNeuralLayer(decoderNet, -80, 0, 5, 'Features');
+            drawNeuralLayer(decoderNet, -20, 0, 3, 'Hidden');
+            drawNeuralLayer(decoderNet, 40, 0, 2, 'Hidden');
+            drawNeuralLayer(decoderNet, 100, 0, 1, 'A(λ)');
+            
+            // Connect layers
+            connectLayers(decoderNet, -80, -20, 5, 3);
+            connectLayers(decoderNet, -20, 40, 3, 2);
+            connectLayers(decoderNet, 40, 100, 2, 1);
+            
+            // Labels
+            neuralGroup.append('text')
+                .attr('x', 0)
+                .attr('y', -150)
+                .attr('class', 'section-label')
+                .text('Neural Architecture');
+        }
+        
+        // Helper function to draw neural layer
+        function drawNeuralLayer(parent, x, y, nodeCount, label) {
+            const nodeSpacing = 20;
+            const startY = -(nodeCount - 1) * nodeSpacing / 2;
+            
+            for (let i = 0; i < nodeCount; i++) {
+                parent.append('circle')
+                    .attr('cx', x)
+                    .attr('cy', y + startY + i * nodeSpacing)
+                    .attr('r', 8)
+                    .attr('class', 'neural-node');
+            }
+            
+            if (label) {
+                parent.append('text')
+                    .attr('x', x)
+                    .attr('y', y + startY - 20)
+                    .attr('text-anchor', 'middle')
+                    .attr('font-size', '11px')
+                    .attr('fill', '#666')
+                    .text(label);
+            }
+        }
+        
+        // Helper function to connect neural layers
+        function connectLayers(parent, x1, x2, count1, count2) {
+            const spacing1 = 20;
+            const spacing2 = 20;
+            const startY1 = -(count1 - 1) * spacing1 / 2;
+            const startY2 = -(count2 - 1) * spacing2 / 2;
+            
+            for (let i = 0; i < count1; i++) {
+                for (let j = 0; j < count2; j++) {
+                    parent.append('line')
+                        .attr('x1', x1)
+                        .attr('y1', startY1 + i * spacing1)
+                        .attr('x2', x2)
+                        .attr('y2', startY2 + j * spacing2)
+                        .attr('class', 'neural-connection');
+                }
+            }
+        }
+        
+        // Draw flow arrows between sections
+        function drawFlowArrows() {
+            const flowGroup = svg.select('#flow-arrows-group');
+            
+            // Manifold to Geodesic
+            flowGroup.append('path')
+                .attr('d', 'M 480 540 Q 640 520 800 540')
+                .attr('class', 'flow-arrow');
+            
+            // Geodesic to Neural
+            flowGroup.append('path')
+                .attr('d', 'M 1120 540 Q 1280 540 1340 540')
+                .attr('class', 'flow-arrow');
+        }
+        
+        // Add mathematical equations
+        function addEquations() {
+            const equationsData = [
+                {id: 'metric', x: 320, y: 680, text: '$ds^2 = g(c,\\lambda) \\, dc^2$'},
+                {id: 'geodesic', x: 960, y: 680, text: '$\\frac{d^2c}{dt^2} = -\\Gamma(c,\\lambda)\\left(\\frac{dc}{dt}\\right)^2$'},
+                {id: 'shooting', x: 960, y: 380, text: '$\\min_{v_0} \\|\\gamma(1) - c_1\\|^2$'},
+                {id: 'decoder', x: 1440, y: 680, text: '$A = \\mathcal{D}_\\phi(f)$'}
+            ];
+            
+            equationsData.forEach(eq => {
+                const eqDiv = document.createElement('div');
+                eqDiv.className = 'equation-overlay';
+                eqDiv.id = `eq-${eq.id}`;
+                eqDiv.style.left = `${eq.x}px`;
+                eqDiv.style.top = `${eq.y}px`;
+                eqDiv.innerHTML = eq.text;
+                document.getElementById('equation-overlays').appendChild(eqDiv);
+                
+                // Render with MathJax
+                MathJax.typesetPromise([eqDiv]).then(() => {
+                    eqDiv.classList.add('visible');
+                });
+            });
+        }
+        
+        // Setup interactive features
+        function setupInteractions() {
+            // Hover effects for manifold
+            d3.select('.manifold-surface')
+                .on('mouseenter', function() {
+                    showTooltip('Learned Riemannian metric g(c,λ)', d3.event.pageX, d3.event.pageY);
+                })
+                .on('mouseleave', hideTooltip);
+            
+            // Hover effects for geodesic
+            d3.select('#optimal-geodesic')
+                .on('mouseenter', function() {
+                    showTooltip('Optimal geodesic path γ(t)', d3.event.pageX, d3.event.pageY);
+                    d3.select(this).style('stroke-width', 4);
+                })
+                .on('mouseleave', function() {
+                    hideTooltip();
+                    d3.select(this).style('stroke-width', 2.5);
+                });
+            
+            // Click to animate geodesic
+            d3.select('#manifold-group').on('click', function() {
+                animateGeodesic();
+            });
+        }
+        
+        // Animate geodesic path
+        function animateGeodesic() {
+            const path = document.getElementById('optimal-geodesic');
+            const length = path.getTotalLength();
+            
+            // Animate path drawing
+            d3.select(path)
+                .attr('stroke-dasharray', length)
+                .attr('stroke-dashoffset', length)
+                .transition()
+                .duration(2000)
+                .ease(d3.easeCubicInOut)
+                .attr('stroke-dashoffset', 0);
+            
+            // Animate particle along path
+            const particle = geodesicGroup.append('circle')
+                .attr('r', 5)
+                .attr('fill', '#FFD700')
+                .attr('filter', 'blur(1px)');
+            
+            particle.transition()
+                .duration(2000)
+                .ease(d3.easeCubicInOut)
+                .attrTween('transform', function() {
+                    return function(t) {
+                        const point = path.getPointAtLength(t * length);
+                        return `translate(${point.x - 960}, ${point.y - 540})`;
+                    };
+                })
+                .on('end', function() {
+                    particle.remove();
+                });
+        }
+        
+        // Start continuous animations
+        function startAnimations() {
+            // Pulse neural connections
+            setInterval(() => {
+                d3.selectAll('.neural-connection')
+                    .transition()
+                    .duration(1000)
+                    .style('opacity', 0.6)
+                    .transition()
+                    .duration(1000)
+                    .style('opacity', 0.3);
+            }, 2000);
+            
+            // Rotate manifold slightly
+            let rotation = 0;
+            setInterval(() => {
+                rotation += 0.5;
+                d3.select('#manifold-group')
+                    .transition()
+                    .duration(100)
+                    .attr('transform', `translate(320, 540) rotate(${Math.sin(rotation * 0.01) * 2})`);
+            }, 100);
+        }
+        
+        // Tooltip functions
+        function showTooltip(text, x, y) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.textContent = text;
+            tooltip.style.left = x + 'px';
+            tooltip.style.top = (y - 30) + 'px';
+            tooltip.classList.add('show');
+        }
+        
+        function hideTooltip() {
+            document.getElementById('tooltip').classList.remove('show');
+        }
+        
+        // Export diagram as SVG
+        function exportDiagram() {
+            const svgElement = document.getElementById('main-diagram');
+            const svgString = new XMLSerializer().serializeToString(svgElement);
+            const blob = new Blob([svgString], {type: 'image/svg+xml'});
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'geodesic_spectral_model.svg';
+            link.click();
+            
+            URL.revokeObjectURL(url);
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

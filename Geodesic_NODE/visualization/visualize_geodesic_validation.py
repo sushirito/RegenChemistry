@@ -251,7 +251,7 @@ def main():
     
     # For quick demo, only process 2 concentrations (0 ppb and 60 ppb)
     # These show the most dramatic difference
-    test_indices = [0, 5]  # 0 ppb and 60 ppb
+    test_indices = [0, 1, 2, 3, 4, 5]  # 0 ppb and 60 ppb
     print(f"\nDemo: Testing on {len(test_indices)} concentrations for speed")
     print("(Full validation would test all 6 concentrations)")
     
