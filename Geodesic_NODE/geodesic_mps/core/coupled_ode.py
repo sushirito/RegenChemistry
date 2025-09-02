@@ -70,8 +70,8 @@ class CoupledGeodesicODE:
         return derivatives
     
     def integrate(self, initial_state: torch.Tensor, wavelengths: torch.Tensor,
-                 t_span: torch.Tensor, method: str = 'dopri5',
-                 rtol: float = 1e-5, atol: float = 1e-7,
+                 t_span: torch.Tensor, method: str = 'euler',
+                 rtol: float = 1e-4, atol: float = 1e-6,
                  use_adjoint: bool = True) -> torch.Tensor:
         """
         Integrate coupled ODE system
@@ -92,18 +92,30 @@ class CoupledGeodesicODE:
         def ode_func(t, state):
             return self.dynamics(t, state, wavelengths)
         
-        # Choose solver
-        solver = odeint_adjoint if use_adjoint else odeint
-        
-        # Integrate
-        trajectories = solver(
-            ode_func,
-            initial_state,
-            t_span,
-            method=method,
-            rtol=rtol,
-            atol=atol
-        )
+        # Choose solver and set parameters
+        if use_adjoint:
+            # Get model parameters for adjoint method
+            adjoint_params = tuple(self.metric_network.parameters()) + \
+                           tuple(self.spectral_flow_network.parameters())
+            
+            trajectories = odeint_adjoint(
+                ode_func,
+                initial_state,
+                t_span,
+                method=method,
+                rtol=rtol,
+                atol=atol,
+                adjoint_params=adjoint_params
+            )
+        else:
+            trajectories = odeint(
+                ode_func,
+                initial_state,
+                t_span,
+                method=method,
+                rtol=rtol,
+                atol=atol
+            )
         
         return trajectories
     
@@ -131,13 +143,14 @@ class CoupledGeodesicODE:
         # Create initial state
         initial_state = torch.stack([c_source, v_initial, A_source], dim=1)
         
-        # Time points
-        t_span = torch.linspace(0, t_final, n_steps, device=c_source.device)
+        # Time points (ensure float32 for MPS)
+        t_span = torch.linspace(0, t_final, n_steps, device=c_source.device, dtype=torch.float32)
         
-        # Integrate
+        # Integrate (disable adjoint on MPS due to float64 issues)
+        use_adjoint = c_source.device.type != 'mps'
         trajectories = self.integrate(
             initial_state, wavelengths, t_span,
-            use_adjoint=True
+            use_adjoint=use_adjoint
         )
         
         # Extract final state

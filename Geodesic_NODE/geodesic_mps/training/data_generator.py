@@ -14,22 +14,36 @@ from pathlib import Path
 class SpectralDataGenerator:
     """Generate and manage spectral data entirely on device"""
     
-    def __init__(self, device: torch.device, use_real_data: bool = True):
+    def __init__(self, device: torch.device, use_real_data: bool = True, exclude_concentration_idx: Optional[int] = None):
         """
         Initialize data generator
         
         Args:
             device: Target device (MPS/CPU)
             use_real_data: Whether to load real arsenic data
+            exclude_concentration_idx: Index of concentration to exclude for leave-one-out validation
         """
         self.device = device
         self.use_real_data = use_real_data
+        self.exclude_concentration_idx = exclude_concentration_idx
         
-        # Standard parameters
-        self.wavelengths = torch.linspace(200, 800, 601, device=device)
-        self.concentrations = torch.tensor([0, 10, 20, 30, 40, 60], dtype=torch.float32, device=device)
+        # Standard parameters (all concentrations initially)
+        all_wavelengths = torch.linspace(200, 800, 601, device=device)
+        all_concentrations = torch.tensor([0, 10, 20, 30, 40, 60], dtype=torch.float32, device=device)
         
-        # Normalization parameters
+        # Filter out excluded concentration if specified
+        if exclude_concentration_idx is not None:
+            mask = torch.ones(len(all_concentrations), dtype=torch.bool)
+            mask[exclude_concentration_idx] = False
+            self.concentrations = all_concentrations[mask]
+            self.excluded_concentration = all_concentrations[exclude_concentration_idx]
+        else:
+            self.concentrations = all_concentrations
+            self.excluded_concentration = None
+            
+        self.wavelengths = all_wavelengths
+        
+        # Normalization parameters (always use full range for consistency)
         self.c_min, self.c_max = 0, 60
         self.wl_min, self.wl_max = 200, 800
         
@@ -47,14 +61,22 @@ class SpectralDataGenerator:
         self.concentrations_norm = self.normalize_concentrations(self.concentrations)
     
     def _load_real_data(self) -> torch.Tensor:
-        """Load real arsenic spectral data"""
+        """Load real arsenic spectral data, excluding holdout if specified"""
         data_path = Path(__file__).parent.parent.parent / "data" / "0.30MB_AuNP_As.csv"
         
         if data_path.exists():
             df = pd.read_csv(data_path)
             spectra_np = df.iloc[:, 1:].values  # (601, 6)
-            spectra = torch.tensor(spectra_np, dtype=torch.float32, device=self.device)
-            return spectra.T  # (6, 601) for easier indexing
+            spectra_full = torch.tensor(spectra_np, dtype=torch.float32, device=self.device)
+            
+            # Exclude holdout concentration if specified
+            if self.exclude_concentration_idx is not None:
+                indices = list(range(6))
+                indices.pop(self.exclude_concentration_idx)
+                spectra = spectra_full[:, indices]  # (601, 5)
+                return spectra.T  # (5, 601) for easier indexing
+            else:
+                return spectra_full.T  # (6, 601) for easier indexing
         else:
             print(f"Warning: Real data not found at {data_path}, using synthetic")
             return self._generate_synthetic_data()
