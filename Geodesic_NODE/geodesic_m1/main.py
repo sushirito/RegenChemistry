@@ -246,8 +246,8 @@ def main():
             
             # Run validation if we have models
             if model_paths:
-                # Get data path
-                data_path = args.data_path if args.data_path else "data/spectral_data.csv"
+                # Get data path - USE REAL DATA
+                data_path = args.data_path if args.data_path else "data/0.30MB_AuNP_As.csv"
                 
                 # Run validation
                 metrics_df, predictions_df = run_complete_validation(
@@ -277,10 +277,11 @@ def main():
                     show_plot=False
                 )
                 
-                # Create 3D comparison plot
+                # Create 3D comparison plot with real interpolation surfaces
                 viz_3d_path = output_dir / "visualizations" / "comparison_3d.html"
                 create_3d_comparison_plot(
                     predictions_csv=str(output_dir / "predictions" / "validation_predictions.csv"),
+                    data_path=data_path,  # Pass the raw data path
                     save_path=str(viz_3d_path),
                     show_plot=False
                 )

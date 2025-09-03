@@ -319,7 +319,7 @@ class SpectralDataGenerator:
         Returns:
             Absorbance tensor [6, 601]
         """
-        data_path = Path(base_data_dir) / "data" / "spectral_data.csv"
+        data_path = Path(base_data_dir) / "data" / "0.30MB_AuNP_As.csv"
         
         if data_path.exists():
             return self.load_real_data(str(data_path))

@@ -235,6 +235,8 @@ def interpolate_holdout(wl: np.ndarray, concs: list, abs_mat: np.ndarray,
                        holdout_idx: int, conc_val: float) -> np.ndarray:
     """
     Basic interpolation for holdout concentration
+    Matches A100 implementation - uses cubic extrapolation which fails at edges
+    This demonstrates why geodesic approach is needed
     
     Args:
         wl: Wavelength array
@@ -251,14 +253,18 @@ def interpolate_holdout(wl: np.ndarray, concs: list, abs_mat: np.ndarray,
     
     y = np.zeros(len(wl))
     for i in range(len(wl)):
-        kind = 'cubic' if len(train_concs) > 3 else 'linear'
-        try:
-            f = interp1d(train_concs, train_abs[i, :], kind=kind, 
-                        fill_value='extrapolate', bounds_error=False)
-        except Exception:
-            f = interp1d(train_concs, train_abs[i, :], kind='linear', 
-                        fill_value='extrapolate', bounds_error=False)
-        y[i] = f(conc_val)
+        # Use cubic if we have enough points, otherwise linear
+        # This matches A100 implementation exactly
+        if len(train_concs) >= 4:
+            interp_func = interp1d(train_concs, train_abs[i, :], 
+                                 kind='cubic', fill_value='extrapolate',
+                                 bounds_error=False)
+        else:
+            interp_func = interp1d(train_concs, train_abs[i, :], 
+                                 kind='linear', fill_value='extrapolate',
+                                 bounds_error=False)
+        
+        y[i] = interp_func(conc_val)
     
     return y
 
