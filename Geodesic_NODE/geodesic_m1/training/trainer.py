@@ -55,16 +55,27 @@ class M1Trainer:
             self.device_manager.print_system_info()
             self.mixed_precision.print_status()
             
-    def create_model(self, config: Dict[str, Any]) -> GeodesicNODE:
+    def create_model(self, config: Dict[str, Any], dataset: Optional[SpectralDataset] = None) -> GeodesicNODE:
         """
         Create and configure a geodesic NODE model
         
         Args:
             config: Model configuration dictionary
+            dataset: Optional dataset for absorbance lookup
             
         Returns:
             Configured GeodesicNODE model
         """
+        # Extract data for absorbance lookup if dataset provided
+        concentrations = None
+        wavelengths = None
+        absorbance_matrix = None
+        
+        if dataset is not None:
+            concentrations = dataset.concentration_values
+            wavelengths = dataset.wavelengths
+            absorbance_matrix = dataset.absorbance_data
+        
         model = GeodesicNODE(
             metric_hidden_dims=config.get('metric_hidden_dims', [128, 256]),
             flow_hidden_dims=config.get('flow_hidden_dims', [64, 128]),
@@ -74,7 +85,10 @@ class M1Trainer:
             shooting_learning_rate=config.get('shooting_learning_rate', 0.5),
             christoffel_grid_size=config.get('christoffel_grid_size', (2000, 601)),
             device=self.device,
-            use_adjoint=config.get('use_adjoint', False)
+            use_adjoint=config.get('use_adjoint', False),
+            concentrations=concentrations,
+            wavelengths=wavelengths,
+            absorbance_matrix=absorbance_matrix
         )
         
         if self.verbose:
@@ -97,6 +111,11 @@ class M1Trainer:
         # Separate parameters for different learning rates
         metric_params = list(model.metric_network.parameters())
         flow_params = list(model.spectral_flow_network.parameters())
+        
+        # Add absorbance lookup parameters if it exists
+        if hasattr(model, 'absorbance_lookup') and model.absorbance_lookup is not None:
+            lookup_params = list(model.absorbance_lookup.interpolation_network.parameters())
+            flow_params.extend(lookup_params)
         
         # Create optimizers with different learning rates
         optimizers = {
@@ -330,8 +349,8 @@ class M1Trainer:
             if self.verbose:
                 print(f"\n📊 Training model {model_idx + 1}/6...")
                 
-            # Create model and optimizer
-            model = self.create_model(config)
+            # Create model with data and optimizer
+            model = self.create_model(config, datasets[model_idx])
             optimizers = self.create_optimizer(model, config)
             
             # Create data loader

@@ -13,6 +13,7 @@ class ShootingSolver:
     
     def __init__(self,
                  geodesic_integrator: 'GeodesicIntegrator',
+                 absorbance_lookup=None,
                  max_iterations: int = 10,
                  tolerance: float = 1e-4,
                  learning_rate: float = 0.5,
@@ -22,12 +23,14 @@ class ShootingSolver:
         
         Args:
             geodesic_integrator: Integrator for geodesic ODEs
+            absorbance_lookup: Network to get initial absorbance values
             max_iterations: Maximum shooting iterations
             tolerance: Convergence tolerance for endpoint error
             learning_rate: Step size for velocity updates
             device: Computation device (MPS for M1 Mac)
         """
         self.integrator = geodesic_integrator
+        self.absorbance_lookup = absorbance_lookup
         self.max_iterations = max_iterations
         self.tolerance = tolerance
         self.learning_rate = learning_rate
@@ -70,7 +73,8 @@ class ShootingSolver:
         for iteration in range(self.max_iterations):
             # Integrate with current velocities (A starts at 0)
             initial_A = torch.zeros_like(c_sources)
-            initial_states = torch.stack([c_sources, v_initial, initial_A], dim=1)
+            # Ensure float32 for MPS compatibility
+            initial_states = torch.stack([c_sources, v_initial, initial_A], dim=1).to(dtype=torch.float32)
             t_span = torch.tensor([0.0, 1.0], device=self.device, dtype=torch.float32)
             
             # Quick integration for shooting (only need endpoints)
@@ -111,8 +115,13 @@ class ShootingSolver:
                 self.learning_rate *= 0.8
                 
         # Final integration with best velocities for full trajectories
-        initial_A = torch.zeros_like(c_sources)
-        initial_states = torch.stack([c_sources, best_velocities, initial_A], dim=1)
+        # Get actual initial absorbance values (not zeros!)
+        if self.absorbance_lookup is not None:
+            initial_A = self.absorbance_lookup.get_source_absorbance(c_sources, wavelengths)
+        else:
+            initial_A = torch.zeros_like(c_sources)
+        # Ensure float32 for MPS compatibility
+        initial_states = torch.stack([c_sources, best_velocities, initial_A], dim=1).to(dtype=torch.float32)
         t_span = torch.linspace(0, 1, n_trajectory_points, device=self.device, dtype=torch.float32)
         
         final_results = self.integrator.integrate_batch(

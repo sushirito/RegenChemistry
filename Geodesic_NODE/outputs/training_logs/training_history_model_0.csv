@@ -1,2 +1,2 @@
 epoch,total_loss,convergence_rate,lr_metric,lr_flow,epoch_time,model_idx,excluded_concentration
-1,1.0824844620444558,1.0,0.0003,0.0008,24.270414113998413,0,0
+1,1.1431153254075483,1.0,0.0003,0.0008,25.341164112091064,0,0

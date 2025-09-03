@@ -6,6 +6,7 @@ Optimized for M1 Mac MPS acceleration
 
 import torch
 import torch.nn as nn
+import numpy as np
 from typing import Dict, Optional, Tuple
 
 from geodesic_m1.core.christoffel_computer import ChristoffelComputer
@@ -13,6 +14,7 @@ from geodesic_m1.core.geodesic_integrator import GeodesicIntegrator
 from geodesic_m1.core.shooting_solver import ShootingSolver
 from geodesic_m1.models.metric_network import MetricNetwork
 from geodesic_m1.models.spectral_flow_network import SpectralFlowNetwork
+from geodesic_m1.models.absorbance_lookup import AbsorbanceLookup
 
 
 class GeodesicNODE(nn.Module):
@@ -27,7 +29,10 @@ class GeodesicNODE(nn.Module):
                  shooting_learning_rate: float = 0.5,
                  christoffel_grid_size: tuple = (2000, 601),
                  device: torch.device = None,
-                 use_adjoint: bool = True):
+                 use_adjoint: bool = True,
+                 concentrations: Optional[np.ndarray] = None,
+                 wavelengths: Optional[np.ndarray] = None,
+                 absorbance_matrix: Optional[np.ndarray] = None):
         """
         Initialize complete geodesic NODE system
         
@@ -61,6 +66,17 @@ class GeodesicNODE(nn.Module):
             activation='tanh'
         ).to(device)
         
+        # Initialize absorbance lookup (if data provided)
+        if concentrations is not None and wavelengths is not None and absorbance_matrix is not None:
+            self.absorbance_lookup = AbsorbanceLookup(
+                concentrations=concentrations,
+                wavelengths=wavelengths,
+                absorbance_matrix=absorbance_matrix,
+                device=device
+            )
+        else:
+            self.absorbance_lookup = None
+        
         # Initialize mathematical components
         self.christoffel_computer = ChristoffelComputer(
             metric_network=self.metric_network,
@@ -78,6 +94,7 @@ class GeodesicNODE(nn.Module):
         
         self.shooting_solver = ShootingSolver(
             geodesic_integrator=self.geodesic_integrator,
+            absorbance_lookup=self.absorbance_lookup,
             max_iterations=shooting_max_iter,
             tolerance=shooting_tolerance,
             learning_rate=shooting_learning_rate,

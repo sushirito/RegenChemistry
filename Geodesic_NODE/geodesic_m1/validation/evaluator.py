@@ -139,7 +139,7 @@ def run_complete_validation(
             device=device
         )
         
-        # Load model
+        # Load model with data for absorbance lookup
         model = GeodesicNODE(
             metric_hidden_dims=[128, 256],
             flow_hidden_dims=[64, 128],
@@ -149,7 +149,10 @@ def run_complete_validation(
             shooting_learning_rate=0.5,
             christoffel_grid_size=(500, 601),
             device=device,
-            use_adjoint=False
+            use_adjoint=False,
+            concentrations=np.array(concentrations),
+            wavelengths=wavelengths,
+            absorbance_matrix=absorbance_matrix
         )
         
         # Load weights

@@ -10,6 +10,14 @@ from plotly.subplots import make_subplots
 from scipy.interpolate import interp1d
 from typing import Dict, Optional, Tuple
 from pathlib import Path
+import sys
+import torch
+
+# Add parent directory to path for imports
+sys.path.append(str(Path(__file__).parent.parent.parent))
+
+from geodesic_m1.visualization.geodesic_surface import generate_geodesic_surface
+from geodesic_m1.training.data_loader import SpectralDataset
 
 
 def compute_interpolation_surface(
@@ -73,7 +81,9 @@ def create_3d_comparison_plot(
     predictions_csv: str,
     data_path: str = "data/0.30MB_AuNP_As.csv",
     save_path: Optional[str] = None,
-    show_plot: bool = True
+    show_plot: bool = True,
+    models: Optional[list] = None,
+    checkpoint_dir: str = "checkpoints"
 ) -> go.Figure:
     """
     Create 3D surface plots comparing Basic vs Geodesic methods
@@ -139,15 +149,37 @@ def create_3d_comparison_plot(
         holdout_pred = df_pred[df_pred['Concentration_ppb'] == holdout_conc]
         holdout_pred = holdout_pred.sort_values('Wavelength_nm')
         
-        # Create geodesic surface (still flat for now, as it only predicts at holdout)
-        # In a full implementation, we'd compute geodesic predictions across all concentrations
-        geodesic_surface = np.zeros_like(C_mesh)
-        geodesic_vals = holdout_pred['Geodesic'].values
-        
-        for j, wl_val in enumerate(wl_subset):
-            wl_idx = np.argmin(np.abs(holdout_pred['Wavelength_nm'].values - wl_val))
-            # For now, show flat surface at prediction (ideally would compute full surface)
-            geodesic_surface[j, :] = geodesic_vals[wl_idx] * np.ones_like(c_range)
+        # Generate continuous geodesic surface if model available
+        if models is not None and idx < len(models):
+            # Load model if needed
+            model = models[idx]
+            if isinstance(model, str):  # Path to checkpoint
+                checkpoint = torch.load(model, map_location='cpu')
+                from geodesic_m1.models.geodesic_model import GeodesicNODE
+                model = GeodesicNODE(device=torch.device('cpu'))
+                model.load_state_dict(checkpoint['model_state_dict'])
+            
+            # Create dataset for normalization
+            dataset = SpectralDataset(
+                absorbance_data=abs_matrix.T,
+                concentration_values=concentrations,
+                wavelengths=wavelengths,
+                excluded_concentration_idx=idx
+            )
+            
+            # Generate continuous surface
+            geodesic_surface = generate_geodesic_surface(
+                model, wavelengths, concentrations, idx,
+                c_range, wl_subset, dataset, torch.device('cpu')
+            )
+        else:
+            # Fallback to flat surface from predictions
+            geodesic_surface = np.zeros_like(C_mesh)
+            geodesic_vals = holdout_pred['Geodesic'].values
+            
+            for j, wl_val in enumerate(wl_subset):
+                wl_idx = np.argmin(np.abs(holdout_pred['Wavelength_nm'].values - wl_val))
+                geodesic_surface[j, :] = geodesic_vals[wl_idx] * np.ones_like(c_range)
         
         # Get actual data for this holdout
         actual_abs = abs_matrix[:, holdout_idx]

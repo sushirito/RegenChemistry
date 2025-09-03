@@ -124,8 +124,8 @@ class GeodesicIntegrator:
                 initial_states,
                 t_span,
                 method=method,
-                rtol=rtol,
-                atol=atol
+                rtol=float(rtol),  # Ensure Python float
+                atol=float(atol)   # Ensure Python float
             )
             
         # Extract final states
