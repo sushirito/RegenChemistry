@@ -1,2 +1,2 @@
-epoch,total_loss,convergence_rate,lr_metric,lr_flow,epoch_time,model_idx,excluded_concentration
-1,1.6443897810849277,0.9994673295454546,0.0003,0.0008,24.604077100753784,1,1
+epoch,total_loss,christoffel_matching_loss,convergence_rate,lr_metric,lr_flow,epoch_time,validation_data_adherence,validation_geometry_score,validation_christoffel_r2,validation_overall_score,model_idx,excluded_concentration
+1,1.6528027274391868,1.8802440990839386e-06,0.9994673295454546,0.0003,0.0008,25.147995948791504,0.0,0.0,0.0,0.0,1,1
