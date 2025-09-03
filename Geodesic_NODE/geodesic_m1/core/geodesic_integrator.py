@@ -124,8 +124,8 @@ class GeodesicIntegrator:
                 initial_states,
                 t_span,
                 method=method,
-                rtol=float(rtol),  # Ensure Python float
-                atol=float(atol)   # Ensure Python float
+                rtol=torch.tensor(rtol, dtype=torch.float32, device=initial_states.device),  # MPS-compatible
+                atol=torch.tensor(atol, dtype=torch.float32, device=initial_states.device)   # MPS-compatible
             )
             
         # Extract final states

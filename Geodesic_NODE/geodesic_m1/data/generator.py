@@ -117,8 +117,14 @@ class SpectralDataGenerator:
             df = pd.read_csv(csv_path)
             
             # Extract absorbance data
-            if 'wavelength' in df.columns:
+            if 'Wavelength' in df.columns:
                 # Wavelengths in first column, concentrations in others
+                wavelengths_csv = df['Wavelength'].values
+                # Get concentration columns in order: 0, 10, 20, 30, 40, 60
+                conc_columns = ['0', '10', '20', '30', '40', '60']
+                absorbance_csv = df[conc_columns].values.T  # Transpose to get [6, 601]
+            elif 'wavelength' in df.columns:
+                # Lowercase version
                 wavelengths_csv = df['wavelength'].values
                 absorbance_csv = df.drop('wavelength', axis=1).values.T
             else:

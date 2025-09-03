@@ -16,6 +16,9 @@ from geodesic_m1.core.device_manager import M1DeviceManager
 from geodesic_m1.training.data_loader import SpectralDataLoader, SpectralDataset
 from geodesic_m1.training.mixed_precision import M1MixedPrecision
 from geodesic_m1.training.validator import LeaveOneOutValidator
+# NOTE: Test imports disabled to avoid circular import issues when running from main.py
+# from ..tests.test_data_adherence import DataAdherenceTests
+# from ..tests.test_geometry_learning import GeometryLearningTests
 
 
 class M1Trainer:
@@ -164,10 +167,16 @@ class M1Trainer:
             'smoothness_loss': [],
             'bounds_loss': [],
             'path_length_loss': [],
+            'christoffel_matching_loss': [],  # NEW
             'convergence_rate': [],
             'lr_metric': [],
             'lr_flow': [],
-            'epoch_time': []
+            'epoch_time': [],
+            # NEW: Validation metrics tracked during training
+            'validation_data_adherence': [],
+            'validation_geometry_score': [],
+            'validation_christoffel_r2': [],
+            'validation_overall_score': []
         }
         
         if self.verbose:
@@ -230,6 +239,13 @@ class M1Trainer:
                     epoch_losses.append(total_loss.item())
                     epoch_convergence_rates.append(predictions['convergence_rate'].item())
                     
+                    # Record individual loss components for tracking
+                    if hasattr(loss_components, '__getitem__'):
+                        if 'christoffel_matching' in loss_components:
+                            if not hasattr(self, '_epoch_christoffel_losses'):
+                                self._epoch_christoffel_losses = []
+                            self._epoch_christoffel_losses.append(loss_components['christoffel_matching'].item())
+                    
             # Epoch statistics
             if epoch_losses:
                 mean_loss = sum(epoch_losses) / len(epoch_losses)
@@ -238,6 +254,14 @@ class M1Trainer:
                 history['epoch'].append(epoch + 1)
                 history['total_loss'].append(mean_loss)
                 history['convergence_rate'].append(mean_convergence)
+                
+                # Track Christoffel matching loss
+                if hasattr(self, '_epoch_christoffel_losses') and self._epoch_christoffel_losses:
+                    mean_christoffel_loss = sum(self._epoch_christoffel_losses) / len(self._epoch_christoffel_losses)
+                    history['christoffel_matching_loss'].append(mean_christoffel_loss)
+                    self._epoch_christoffel_losses = []  # Reset for next epoch
+                else:
+                    history['christoffel_matching_loss'].append(0.0)
                 
                 # Track learning rates
                 current_lr_metric = optimizers['metric'].param_groups[0]['lr']
@@ -248,6 +272,34 @@ class M1Trainer:
                 # Track epoch time
                 epoch_time = time.time() - epoch_start_time
                 history['epoch_time'].append(epoch_time)
+                
+                # RUN VALIDATION TESTS DURING TRAINING (every 10 epochs)
+                validation_interval = config.get('validation_interval', 10)
+                if (epoch + 1) % validation_interval == 0:
+                    validation_results = self._run_training_validation(model, dataset, epoch + 1)
+                    
+                    # Record validation metrics
+                    history['validation_data_adherence'].append(validation_results.get('data_adherence_score', 0.0))
+                    history['validation_geometry_score'].append(validation_results.get('geometry_score', 0.0))
+                    history['validation_christoffel_r2'].append(validation_results.get('christoffel_r2', 0.0))
+                    history['validation_overall_score'].append(validation_results.get('overall_score', 0.0))
+                    
+                    if self.verbose:
+                        print(f"   🧪 Validation - Data: {validation_results.get('data_adherence_score', 0):.1f}, "
+                              f"Geometry: {validation_results.get('geometry_score', 0):.1f}, "
+                              f"Overall: {validation_results.get('overall_score', 0):.1f}")
+                else:
+                    # Fill with previous values or zeros for non-validation epochs
+                    if history['validation_data_adherence']:
+                        history['validation_data_adherence'].append(history['validation_data_adherence'][-1])
+                        history['validation_geometry_score'].append(history['validation_geometry_score'][-1])
+                        history['validation_christoffel_r2'].append(history['validation_christoffel_r2'][-1])
+                        history['validation_overall_score'].append(history['validation_overall_score'][-1])
+                    else:
+                        history['validation_data_adherence'].append(0.0)
+                        history['validation_geometry_score'].append(0.0)
+                        history['validation_christoffel_r2'].append(0.0)
+                        history['validation_overall_score'].append(0.0)
                 
                 # Update learning rate schedulers if any
                 # TODO: Add scheduler support
@@ -435,6 +487,67 @@ class M1Trainer:
         validator.save_results(str(results_path))
         
         return validation_results
+    
+    def _run_training_validation(self, model: GeodesicNODE, dataset: SpectralDataset, epoch: int) -> Dict[str, float]:
+        """
+        Run lightweight validation during training
+        
+        Args:
+            model: Model being trained
+            dataset: Training dataset for this model
+            epoch: Current epoch number
+            
+        Returns:
+            Dictionary with validation scores
+        """
+        try:
+            # Set model to eval mode for validation
+            model.eval()
+            
+            # Simple geometry validation using model's built-in method
+            with torch.no_grad():
+                # Test a few sample points
+                c_batch = torch.tensor([0.0, 0.5, -0.5], device=model.device)
+                wl_batch = torch.tensor([0.0, 0.0, 0.0], device=model.device)
+                
+                geometry_metrics = model.validate_geometry_learning(c_batch, wl_batch)
+                
+                # Extract scores
+                christoffel_r2 = geometry_metrics.get('christoffel_correlation', 0.0)
+                geometry_score = max(0, (christoffel_r2 + 1) * 50)  # Convert [-1,1] to [0,100]
+                
+                # Simple data adherence test (self-prediction should be accurate)
+                result = model.forward(c_batch, c_batch, wl_batch)  # Self-transitions
+                convergence_rate = float(result['convergence_rate'])
+                data_adherence_score = convergence_rate * 100
+                
+                # Overall score
+                overall_score = 0.6 * data_adherence_score + 0.4 * geometry_score
+                
+            # Set model back to training mode
+            model.train()
+            
+            return {
+                'data_adherence_score': data_adherence_score,
+                'geometry_score': geometry_score,
+                'christoffel_r2': christoffel_r2,
+                'overall_score': overall_score,
+                'epoch': epoch
+            }
+            
+        except Exception as e:
+            if self.verbose:
+                print(f"   ⚠️  Validation testing failed at epoch {epoch}: {e}")
+            
+            # Return safe default values on error
+            model.train()  # Ensure model is back in training mode
+            return {
+                'data_adherence_score': 0.0,
+                'geometry_score': 0.0,
+                'christoffel_r2': 0.0,
+                'overall_score': 0.0,
+                'epoch': epoch
+            }
         
     def _save_checkpoint(self,
                         model: GeodesicNODE,

@@ -12,6 +12,7 @@ from typing import Dict, Optional, Tuple
 from geodesic_m1.core.christoffel_computer import ChristoffelComputer
 from geodesic_m1.core.geodesic_integrator import GeodesicIntegrator
 from geodesic_m1.core.shooting_solver import ShootingSolver
+from geodesic_m1.core.target_christoffel import TargetChristoffelComputer
 from geodesic_m1.models.metric_network import MetricNetwork
 from geodesic_m1.models.spectral_flow_network import SpectralFlowNetwork
 from geodesic_m1.models.absorbance_lookup import AbsorbanceLookup
@@ -74,8 +75,18 @@ class GeodesicNODE(nn.Module):
                 absorbance_matrix=absorbance_matrix,
                 device=device
             )
+            
+            # Initialize target Christoffel computer for inverse geodesic learning
+            self.target_christoffel_computer = TargetChristoffelComputer(
+                concentrations=concentrations,
+                wavelengths=wavelengths,
+                absorbance_data=absorbance_matrix,
+                device=device,
+                smoothing_factor=1e-3
+            )
         else:
             self.absorbance_lookup = None
+            self.target_christoffel_computer = None
         
         # Initialize mathematical components
         self.christoffel_computer = ChristoffelComputer(
@@ -194,12 +205,16 @@ class GeodesicNODE(nn.Module):
         else:
             path_lengths = torch.tensor(0.0, device=self.device)
             
+        # TARGET CHRISTOFFEL MATCHING LOSS (NEW - for inverse geodesic learning)
+        christoffel_matching_loss = self._compute_christoffel_matching_loss(c_batch, wavelength_batch)
+        
         # Total loss with weights
         total_loss = (
             reconstruction_loss +
-            0.01 * smoothness_loss +
-            0.001 * bounds_loss +
-            0.001 * path_lengths
+            0.1 * smoothness_loss +  # Increased from 0.01
+            0.01 * bounds_loss +     # Increased from 0.001 
+            0.01 * path_lengths +    # Increased from 0.001
+            5.0 * christoffel_matching_loss  # NEW - Strong supervision signal
         )
         
         return {
@@ -207,7 +222,8 @@ class GeodesicNODE(nn.Module):
             'reconstruction': reconstruction_loss,
             'smoothness': smoothness_loss,
             'bounds': bounds_loss,
-            'path_length': path_lengths
+            'path_length': path_lengths,
+            'christoffel_matching': christoffel_matching_loss  # NEW
         }
         
     def parallel_forward(self, concentration_pairs: torch.Tensor,
@@ -230,6 +246,70 @@ class GeodesicNODE(nn.Module):
         return self.shooting_solver.solve_parallel(
             concentration_pairs, wavelength_grid
         )
+    
+    def _compute_christoffel_matching_loss(self, c_batch: torch.Tensor, wavelength_batch: torch.Tensor) -> torch.Tensor:
+        """
+        Compute loss for matching target Christoffel symbols (inverse geodesic learning)
+        
+        Args:
+            c_batch: Normalized concentration values [-1, 1] [batch_size]
+            wavelength_batch: Normalized wavelength values [-1, 1] [batch_size]
+            
+        Returns:
+            Christoffel matching loss scalar
+        """
+        # If no target computer available, return zero loss
+        if self.target_christoffel_computer is None:
+            return torch.tensor(0.0, device=self.device, requires_grad=True)
+        
+        # Get target Christoffel symbols from data
+        target_christoffel = self.target_christoffel_computer.get_target_christoffel(c_batch, wavelength_batch)
+        
+        # Compute actual Christoffel symbols from learned metric
+        actual_christoffel = self.christoffel_computer.interpolate(c_batch, wavelength_batch)
+        
+        # MSE loss between target and actual
+        christoffel_loss = nn.functional.mse_loss(actual_christoffel, target_christoffel)
+        
+        return christoffel_loss
+    
+    def validate_geometry_learning(self, c_batch: torch.Tensor, wavelength_batch: torch.Tensor) -> Dict[str, float]:
+        """
+        Validate how well the model is learning the target geometry
+        
+        Returns:
+            Dictionary with validation metrics
+        """
+        if self.target_christoffel_computer is None:
+            return {'geometry_validation': 'No target data available'}
+        
+        with torch.no_grad():
+            # Get targets and predictions
+            target_christoffel = self.target_christoffel_computer.get_target_christoffel(c_batch, wavelength_batch)
+            actual_christoffel = self.christoffel_computer.interpolate(c_batch, wavelength_batch)
+            
+            # Compute metrics
+            mse = float(nn.functional.mse_loss(actual_christoffel, target_christoffel))
+            mae = float(torch.mean(torch.abs(actual_christoffel - target_christoffel)))
+            
+            # Correlation coefficient
+            if len(actual_christoffel) > 1:
+                actual_centered = actual_christoffel - actual_christoffel.mean()
+                target_centered = target_christoffel - target_christoffel.mean()
+                correlation = float(torch.sum(actual_centered * target_centered) / 
+                                  (torch.norm(actual_centered) * torch.norm(target_centered) + 1e-8))
+            else:
+                correlation = 0.0
+            
+            return {
+                'christoffel_mse': mse,
+                'christoffel_mae': mae,
+                'christoffel_correlation': correlation,
+                'target_mean': float(target_christoffel.mean()),
+                'target_std': float(target_christoffel.std()),
+                'actual_mean': float(actual_christoffel.mean()),
+                'actual_std': float(actual_christoffel.std())
+            }
         
     def save_checkpoint(self, path: str, epoch: int, optimizers: dict = None, best_loss: float = None):
         """Save model checkpoint"""
