@@ -1,0 +1,27 @@
+✅ MPS acceleration available and enabled
+🚀 Geodesic NODE Training on M1 Mac
+==================================================
+✅ MPS acceleration available and enabled
+Generated 12020 training pairs (excluded concentration 0)
+Generated 12020 training pairs (excluded concentration 1)
+Generated 12020 training pairs (excluded concentration 2)
+Generated 12020 training pairs (excluded concentration 3)
+Generated 12020 training pairs (excluded concentration 4)
+Generated 12020 training pairs (excluded concentration 5)
+✅ MPS acceleration available and enabled
+💻 Using CPU - mixed precision disabled
+🚀 M1 Mac optimizations:
+   Device: mps
+   Recommended batch size: 1024
+   Gradient accumulation: 1x
+   Mixed precision: True
+Pre-computing Christoffel grid (500, 601) on M1 Mac...
+  Computation time: 1.82s
+  Grid memory: 0.57 MB
+  Grid range: Γ ∈ [0.0238, 0.0273]
+✅ MPS acceleration available and enabled
+✅ MPS acceleration available and enabled
+✅ MPS acceleration available and enabled
+✅ MPS acceleration available and enabled
+💾 Checkpoint saved to checkpoints/best_model_0.pt
+❌ Training failed: All arrays must be of the same length
