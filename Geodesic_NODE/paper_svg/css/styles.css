@@ -1,0 +1,237 @@
+:root {
+    --ocean-blue: #1e3a8a;
+    --bright-blue: #3b82f6;
+    --soft-blue: #60a5fa;
+    --light-blue: #93c5fd;
+    --teal: #14b8a6;
+    --light-teal: #4dd0e1;
+    --golden: #eab308;
+    --light-golden: #fbbf24;
+    --orange: #f97316;
+    --light-orange: #fb923c;
+    --purple: #8b5cf6;
+    --deep-purple: #581c87;
+    --green: #059669;
+    --light-green: #4ade80;
+    --soft-green: #86efac;
+    --red: #dc2626;
+    --light-red: #ef4444;
+    --gray-dark: #1f2937;
+    --gray-medium: #374151;
+    --gray-light: #6b7280;
+    --gray-border: #e5e7eb;
+    --bronze: #a3734f;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: #ffffff;
+    color: var(--gray-dark);
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--gray-border);
+}
+
+h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--gray-dark);
+    margin-bottom: 0.5rem;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    color: var(--gray-medium);
+}
+
+h2 {
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--gray-dark);
+    margin-bottom: 1.5rem;
+}
+
+.figure-section {
+    margin-bottom: 4rem;
+}
+
+.svg-container {
+    background: #ffffff;
+    border: 1px solid var(--gray-border);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 500px;
+    margin-bottom: 1rem;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+button {
+    background: var(--bright-blue);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+button:hover {
+    background: var(--ocean-blue);
+}
+
+/* SVG Specific Styles */
+.manifold-surface {
+    fill: url(#manifoldGradient);
+    stroke: rgba(255, 255, 255, 0.2);
+    stroke-width: 0.5;
+}
+
+.euclidean-path {
+    fill: none;
+    stroke: var(--red);
+    stroke-width: 3;
+    stroke-dasharray: 5, 3;
+}
+
+.geodesic-path {
+    fill: none;
+    stroke: var(--green);
+    stroke-width: 3;
+}
+
+.anchor-point {
+    fill: var(--light-golden);
+    stroke: var(--golden);
+    stroke-width: 2;
+}
+
+.spectrum-line {
+    fill: none;
+    stroke-width: 1.5;
+}
+
+.math-text {
+    font-family: 'Computer Modern', 'Times New Roman', serif;
+    font-size: 14px;
+    fill: var(--gray-dark);
+}
+
+.label-text {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12px;
+    fill: var(--gray-medium);
+}
+
+.header-text {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 18px;
+    font-weight: 500;
+    fill: var(--gray-dark);
+}
+
+.panel-border {
+    fill: none;
+    stroke: var(--gray-border);
+    stroke-width: 1;
+}
+
+.heatmap-cell {
+    stroke: none;
+}
+
+.christoffel-arrow {
+    stroke: var(--purple);
+    stroke-width: 1.5;
+    marker-end: url(#arrowhead);
+}
+
+.network-node {
+    stroke-width: 2;
+}
+
+.network-link {
+    fill: none;
+    stroke: var(--gray-light);
+    stroke-width: 1;
+    opacity: 0.6;
+}
+
+.memory-block {
+    stroke: var(--gray-medium);
+    stroke-width: 1;
+}
+
+.trajectory-line {
+    fill: none;
+    stroke-width: 2;
+    opacity: 0.7;
+}
+
+.cannon-body {
+    fill: var(--bronze);
+    stroke: #8b6239;
+    stroke-width: 1;
+}
+
+.earth-ocean {
+    fill: #0ea5e9;
+}
+
+.earth-land {
+    fill: #22c55e;
+}
+
+.great-circle {
+    fill: none;
+    stroke: var(--orange);
+    stroke-width: 2;
+}
+
+.grid-line {
+    stroke: var(--gray-border);
+    stroke-width: 0.5;
+    opacity: 0.5;
+}
+
+/* Tooltip styles */
+.tooltip {
+    position: absolute;
+    background: rgba(31, 41, 55, 0.95);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.tooltip.visible {
+    opacity: 1;
+}
