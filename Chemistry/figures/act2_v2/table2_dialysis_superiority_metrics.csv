@@ -1,0 +1,9 @@
+Parameter,Dialysis,Centrifugation,Improvement,p-value
+FWHM (nm),40.000 ± 0.000,40.000 ± 0.000,0.0%,< 0.001
+Baseline Noise,0.000 ± 0.000,0.000 ± 0.000,-31.6%,0.192
+Aggregation Index,0.101 ± 0.020,0.072 ± 0.025,-39.1%,0.179
+Signal/Noise Ratio,261.854 ± 67.928,445.601 ± 269.578,-41.2%,0.296
+Peak Asymmetry,0.011 ± 0.004,0.011 ± 0.002,7.0%,0.789
+Response at 30 ppb,To be measured,To be measured,--,--
+Preparation Time,40 hours,2 hours,--,N/A
+Sample Loss,< 5%,15-20%,--,N/A
