@@ -1,0 +1,6 @@
+metric,dialysis_mean,dialysis_std,centrifuge_mean,centrifuge_std,improvement,p_value,significant
+peak_height,0.1262,0.0307,0.1288,0.0365,-1.962,0.9299,No
+fwhm,80.0,0.0,80.0,0.0,0.0,,No
+baseline_noise,0.0014,0.0007,0.0004,0.0002,-204.1179,0.057,No
+red_tail,0.1006,0.02,0.0723,0.0252,-39.0852,0.1794,No
+aggregation_index,0.8968,0.2911,0.709,0.4052,-26.4913,0.5386,No
